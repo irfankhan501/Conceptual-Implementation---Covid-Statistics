@@ -28,7 +28,7 @@ app.get("/totalRecovered", async (req, res) => {
       },
     },
   ]);
-  res.send(result);
+  res.send({ data: result[0] });
 });
 
 // app.get("/totalActive", async (req, res) => {
@@ -67,7 +67,7 @@ app.get("/totalActive", async (req, res) => {
       },
     },
   ]);
-  res.send(result);
+  res.send({ data: result[0] });
 });
 
 // app.get("/totalDeath", async (req, res) => {
@@ -90,7 +90,7 @@ app.get("/totalDeath", async (req, res) => {
       },
     },
   ]);
-  res.send(result);
+  res.send({ data: result[0] });
 });
 
 app.get("/hotspotStates", async (req, res) => {
@@ -102,7 +102,6 @@ app.get("/hotspotStates", async (req, res) => {
           $sum: {
             $divide: [{ $subtract: ["$infected", "$recovered"] }, "$infected"],
           },
-          // rate: { $sum: { $divide: ["$$diff", "$infected"] } },
         },
       },
     },
