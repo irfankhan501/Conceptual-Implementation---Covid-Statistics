@@ -117,7 +117,7 @@ app.get("/hotspotStates", async (req, res) => {
       $project: {
         state: "$_id",
         _id: 0,
-        rate: { $round: ["$rate", 5] },
+        rate: { $round: ["$rate", 4] },
       },
     },
   ]);
@@ -143,7 +143,7 @@ app.get("/healthyStates", async (req, res) => {
       $project: {
         state: "$_id",
         _id: 0,
-        mortality: { $round: ["$mortality", 5] },
+        mortality: { $round: ["$mortality", 4] },
       },
     },
   ]);
