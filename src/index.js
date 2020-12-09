@@ -1,18 +1,156 @@
-const express = require('express')
-const app = express()
+const express = require("express");
+const app = express();
 const bodyParser = require("body-parser");
-const port = 8080
+const port = 8080;
 
 // Parse JSON bodies (as sent by API clients)
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-const { connection } = require('./connector')
+const { connection } = require("./connector");
 
+// app.get("/totalRecovered", async (req, res) => {
+//   const result = await connection.find().select("recovered -_id");
+//   let totalRecovered = 0;
+//   result.forEach((element) => {
+//     totalRecovered += element.recovered;
+//   });
+//   res.send({ data: { _id: "total", recovered: totalRecovered } });
+// });
 
+app.get("/totalRecovered", async (req, res) => {
+  const result = await connection.aggregate([
+    {
+      $group: {
+        _id: "total",
+        recovered: {
+          $sum: "$recovered",
+        },
+      },
+    },
+  ]);
+  res.send(result);
+});
 
+// app.get("/totalActive", async (req, res) => {
+//   const result = await connection.find().select("recovered infected -_id");
+//   let totalRecovered = 0,
+//     totalInfected = 0;
+//   result.forEach((element) => {
+//     totalRecovered += element.recovered;
+//     totalInfected += element.infected;
+//   });
+//   res.send({ data: { _id: "total", active: totalInfected - totalRecovered } });
+// });
 
+app.get("/totalActive", async (req, res) => {
+  const result = await connection.aggregate([
+    {
+      $group: {
+        _id: "total",
+        totalInfected: {
+          $sum: "$infected",
+        },
+        totalRecovered: {
+          $sum: "$recovered",
+        },
+      },
+    },
+    {
+      $addFields: {
+        active: { $subtract: ["$totalInfected", "$totalRecovered"] },
+      },
+    },
+    {
+      $project: {
+        _id: "total",
+        active: "$active",
+      },
+    },
+  ]);
+  res.send(result);
+});
 
+// app.get("/totalDeath", async (req, res) => {
+//   const result = await connection.find().select("death -_id");
+//   let totalDeath = 0;
+//   result.forEach((element) => {
+//     totalDeath += element.death;
+//   });
+//   res.send({ data: { _id: "total", death: totalDeath } });
+// });
 
-app.listen(port, () => console.log(`App listening on port ${port}!`))
+app.get("/totalDeath", async (req, res) => {
+  const result = await connection.aggregate([
+    {
+      $group: {
+        _id: "total",
+        death: {
+          $sum: "$death",
+        },
+      },
+    },
+  ]);
+  res.send(result);
+});
+
+app.get("/hotspotStates", async (req, res) => {
+  const result = await connection.aggregate([
+    {
+      $group: {
+        _id: "$state",
+        rate: {
+          $sum: {
+            $divide: [{ $subtract: ["$infected", "$recovered"] }, "$infected"],
+          },
+          // rate: { $sum: { $divide: ["$$diff", "$infected"] } },
+        },
+      },
+    },
+    {
+      $match: {
+        rate: {
+          $gt: 0.1,
+        },
+      },
+    },
+
+    {
+      $project: {
+        state: "$_id",
+        _id: 0,
+        rate: { $round: ["$rate", 5] },
+      },
+    },
+  ]);
+  res.send({ data: result });
+});
+
+app.get("/healthyStates", async (req, res) => {
+  const result = await connection.aggregate([
+    {
+      $group: {
+        _id: "$state",
+        mortality: { $sum: { $divide: ["$death", "$infected"] } },
+      },
+    },
+    {
+      $match: {
+        mortality: {
+          $lt: 0.005,
+        },
+      },
+    },
+    {
+      $project: {
+        state: "$_id",
+        _id: 0,
+        mortality: { $round: ["$mortality", 5] },
+      },
+    },
+  ]);
+  res.send({ data: result });
+});
+
+app.listen(port, () => console.log(`App listening on port ${port}!`));
 
 module.exports = app;
